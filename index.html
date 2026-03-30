@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMK RAJASA - Presensi PKL Digital</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome untuk Ikon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .bg-gradient-blue { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); }
+        .video-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1/1;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+        #photoPreview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+        .shutter-btn {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 70px;
+            height: 70px;
+            background: white;
+            border-radius: 50%;
+            padding: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border: none;
+        }
+        .shutter-btn div {
+            width: 100%;
+            height: 100%;
+            background: #ef4444;
+            border-radius: 50%;
+            transition: transform 0.1s;
+        }
+        .shutter-btn:active div { transform: scale(0.9); }
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(255,255,255,0.9);
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+    <!-- HALAMAN LOGIN -->
+    <div id="loginPage" class="flex flex-col items-center justify-center min-h-screen p-4">
+        <div class="bg-white w-full max-w-sm rounded-2xl shadow-lg p-8 flex flex-col items-center text-center">
+            <div class="mb-6">
+                <img src="https://lh3.googleusercontent.com/d/1Z7MdnGKOzKeb2I_Zr9Ej5Ldi7RxPauKn" 
+                     alt="Logo SMK RAJASA" 
+                     class="w-24 h-24 object-contain"
+                     onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2602/2602414.png';">
+            </div>
+
+            <h1 class="text-2xl font-bold text-gray-800">SMK RAJASA</h1>
+            <p class="text-gray-500 text-sm mb-8 font-medium">Sistem Presensi PKL Digital</p>
+
+            <div class="w-full text-left">
+                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Identitas Siswa</label>
+                <div class="relative mb-2">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500">
+                        <i class="fa-solid fa-address-card"></i>
+                    </span>
+                    <input type="number" id="loginNisn" placeholder="Masukkan NISN..." 
+                           class="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none text-gray-700 transition-all">
+                </div>
+                <p class="text-[10px] text-gray-400 text-center mb-6">Pastikan NISN sesuai data sekolah</p>
+            </div>
+
+            <button onclick="handleLogin()" 
+                    class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 flex items-center justify-center gap-2 hover:bg-blue-700 active:scale-95 transition-all">
+                Masuk Aplikasi <i class="fa-solid fa-arrow-right"></i>
+            </button>
+
+            <p class="text-[10px] text-gray-300 mt-8 tracking-widest uppercase">SMK RAJASA Surabaya</p>
+        </div>
+    </div>
+
+    <!-- HALAMAN FORMULIR -->
+    <div id="mainPage" class="hidden flex flex-col min-h-screen max-w-md mx-auto bg-white shadow-2xl relative">
+        <div class="bg-gradient-blue p-5 flex items-center justify-between text-white rounded-b-3xl shadow-lg">
+            <button onclick="handleLogout()" class="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all">
+                <i class="fa-solid fa-arrow-left"></i> KELUAR
+            </button>
+            <div class="text-center">
+                <h2 class="font-bold text-sm tracking-wide">SMK RAJASA</h2>
+                <p class="text-[10px] opacity-80 uppercase font-medium">Formulir Absensi</p>
+            </div>
+            <div class="w-10 flex justify-end">
+                <img src="https://lh3.googleusercontent.com/d/1Z7MdnGKOzKeb2I_Zr9Ej5Ldi7RxPauKn" 
+                     alt="Logo" class="w-8 h-8 object-contain brightness-110">
+            </div>
+        </div>
+
+        <div class="p-5 space-y-6 overflow-y-auto flex-grow pb-10">
+            
+            <!-- Detail Data -->
+            <div class="space-y-4">
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Nama Lengkap</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-user absolute left-4 top-1/2 -translate-y-1/2 text-blue-300"></i>
+                        <input type="text" id="nama" readonly 
+                               class="w-full pl-10 pr-4 py-3.5 rounded-xl border border-gray-100 bg-gray-50 text-xs font-bold outline-none text-gray-700">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Kelas</label>
+                        <input type="text" id="kelas" readonly 
+                               class="w-full px-4 py-3.5 rounded-xl border border-gray-100 bg-gray-50 text-xs font-bold outline-none text-gray-700">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">NISN</label>
+                        <input type="number" id="nisn" readonly 
+                               class="w-full px-4 py-3.5 rounded-xl border border-gray-100 bg-gray-50 text-xs font-bold outline-none text-gray-700">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lokasi GPS -->
+            <div class="border border-blue-100 rounded-2xl p-4 bg-blue-50/30">
+                <div class="flex justify-between items-center mb-2">
+                    <div class="flex items-center gap-2 text-blue-800 text-[10px] font-black uppercase">
+                        <i class="fa-solid fa-location-dot text-blue-500"></i> Koordinat Lokasi
+                    </div>
+                    <button onclick="getLocation()" class="text-blue-600 text-[10px] font-bold hover:underline">Update GPS</button>
+                </div>
+                <div class="bg-white border border-blue-50 rounded-xl p-3 text-center shadow-sm">
+                    <p id="locationText" class="text-xs text-gray-400 italic">Mencari koordinat...</p>
+                </div>
+            </div>
+
+            <!-- Kamera Selfie -->
+            <div>
+                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Verifikasi Foto (Selfie)</label>
+                <div class="video-container shadow-2xl">
+                    <p class="absolute top-4 right-4 text-[9px] text-white/50 z-10 font-mono bg-black/20 px-2 py-0.5 rounded">Mode: Kamera</p>
+                    <video id="video" autoplay playsinline></video>
+                    <img id="photoPreview">
+                    <button type="button" id="shutter" class="shutter-btn" onclick="takePhoto()">
+                        <div></div>
+                    </button>
+                    <button id="retakeBtn" onclick="retakePhoto()" 
+                            class="hidden absolute bottom-6 right-6 bg-red-600 text-white px-4 py-2 rounded-full text-[10px] font-black shadow-xl flex items-center gap-2">
+                        <i class="fa-solid fa-rotate-left"></i> GANTI FOTO
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tombol Status (Pindah ke bawah) -->
+            <div>
+                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block text-center">Pilih Status Kehadiran</label>
+                <div class="flex p-1.5 bg-gray-100 rounded-2xl gap-1 mb-4">
+                    <button type="button" id="btnMasuk" onclick="setStatus('Masuk')" 
+                            class="flex-1 py-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all bg-blue-600 text-white shadow-md">
+                        <i class="fa-solid fa-right-to-bracket"></i> Masuk
+                    </button>
+                    <button type="button" id="btnPulang" onclick="setStatus('Pulang')" 
+                            class="flex-1 py-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all text-gray-500">
+                        <i class="fa-solid fa-right-from-bracket"></i> Pulang
+                    </button>
+                </div>
+
+                <button id="submitBtn" onclick="sendData()" disabled
+                        class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black text-sm tracking-widest flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> KIRIM ABSENSI
+                </button>
+            </div>
+
+            <!-- Riwayat Absensi -->
+            <div class="mt-8 border-t border-gray-100 pt-6">
+                <div class="flex items-center gap-2 mb-4 text-gray-800">
+                    <i class="fa-solid fa-clock-rotate-left text-blue-600"></i>
+                    <h3 class="font-bold text-sm uppercase tracking-wide">Riwayat Absensi Anda</h3>
+                </div>
+                <div id="historyList" class="space-y-3">
+                    <div class="text-center py-6 border-2 border-dashed border-gray-100 rounded-2xl">
+                        <p class="text-xs text-gray-300">Belum ada riwayat hari ini</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="canvas" class="hidden"></canvas>
+
+    <div id="loading" class="loading-overlay">
+        <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p class="font-black text-blue-900 tracking-widest animate-pulse">MEMPROSES DATA...</p>
+    </div>
+
+    <script>
+        /************************************************************************
+         * URL GOOGLE APPS SCRIPT
+         ************************************************************************/
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx9bmV-yZKG0g3TnA_72JvHZIAWIMaXxDKyh4a7tDJ0ZZABVmwpAPUElFt97vMVDutnQQ/exec"; 
+        /************************************************************************/
+
+        const SISWA_DATABASE = [
+            { nisn: "0084705189", nama: "AIRLANGGA NAKULA SADEWA", kelas: "11 TITL 2" },
+            { nisn: "0087460794", nama: "ALFAD FACHRI", kelas: "11 TITL 2" },
+            { nisn: "0083795995", nama: "ALFARIZQI FATHIR OKTAVIAN", kelas: "11 TITL 2" },
+            { nisn: "0081564126", nama: "ANDHIKA SETIA PRIAMBODO", kelas: "11 TITL 2" },
+            { nisn: "0096146445", nama: "ANTA MAULANA PARIKESIT", kelas: "11 TITL 2" },
+            { nisn: "0089139340", nama: "BINTANG RACHMAT DHANI", kelas: "11 TITL 2" },
+            { nisn: "0085749057", nama: "DZAKY ALMER KURNIAWAN", kelas: "11 TITL 2" },
+            { nisn: "0071878160", nama: "FARDHAD AL-KHOIRI", kelas: "11 TITL 2" },
+            { nisn: "3091979636", nama: "FAREL SABILILLAH FIRMANSYAH", kelas: "11 TITL 2" },
+            { nisn: "0098541072", nama: "FATAHILLAH SURYA RAHARJO", kelas: "11 TITL 2" },
+            { nisn: "0087441508", nama: "GALLELO SURYA SANTOSO", kelas: "11 TITL 2" },
+            { nisn: "0092124755", nama: "HAKIM BAHRUL ALAM", kelas: "11 TITL 2" },
+            { nisn: "0089280044", nama: "ILHAM YAHYA", kelas: "11 TITL 2" },
+            { nisn: "0085071286", nama: "M. Akmal Azmi Dafa", kelas: "11 TITL 2" },
+            { nisn: "0074491503", nama: "M. RIZKI DAFA RAMADHAN", kelas: "11 TITL 2" },
+            { nisn: "0081908865", nama: "MAULANA AKHADUN SAIFULLOH", kelas: "11 TITL 2" },
+            { nisn: "0094001616", nama: "MAULANA AZIES FAHCTUR ROHMAN", kelas: "11 TITL 2" },
+            { nisn: "0082783452", nama: "Moch. Noval Oktavian", kelas: "11 TITL 2" },
+            { nisn: "0093524671", nama: "MOCHAMMAD ZEFFRI EFENDI", kelas: "11 TITL 2" },
+            { nisn: "0081904327", nama: "MOHAMMAD ABIMANYU", kelas: "11 TITL 2" },
+            { nisn: "0087587742", nama: "MUHAMMAD ARIEL ARDIANSYAH", kelas: "11 TITL 2" },
+            { nisn: "0097916080", nama: "MUHAMMAD YUSRIL RAMADHAN", kelas: "11 TITL 2" },
+            { nisn: "0085867240", nama: "Niko Febrian Valentino", kelas: "11 TITL 2" },
+            { nisn: "0088596440", nama: "RADITYA ACHMAD AL KAUTSAR", kelas: "11 TITL 2" },
+            { nisn: "0081884850", nama: "RAKABUMI GACO SUGIARTO", kelas: "11 TITL 2" },
+            { nisn: "0086591866", nama: "RIYAN FATURROHMAN", kelas: "11 TITL 2" },
+            { nisn: "0089718513", nama: "RIZKI AHMAD FAUZI", kelas: "11 TITL 2" },
+            { nisn: "0088980527", nama: "RIZKY RADITYA REVANDA PUTRA", kelas: "11 TITL 2" },
+            { nisn: "0081512349", nama: "SULTAN AKUR PRAKOSO", kelas: "11 TITL 2" },
+            { nisn: "0084420740", nama: "Wijaya Kartiko", kelas: "11 TITL 2" },
+            { nisn: "0081462120", nama: "WILDAN BIMA SATYA", kelas: "11 TITL 2" },
+            { nisn: "0089859374", nama: "ZAFRAN FADHIL MAHARDIKA", kelas: "11 TITL 2" },
+            { nisn: "0052383825", nama: "Abdul Adhim", kelas: "11 TKJ 2" },
+            { nisn: "0093468010", nama: "ADINDA", kelas: "11 TKJ 2" },
+            { nisn: "0086012960", nama: "ADITIA WICAKSANA PUTRA SANTOSO", kelas: "11 TKJ 2" },
+            { nisn: "0087212283", nama: "ADJENG PUTRI SEPTIANI", kelas: "11 TKJ 2" },
+            { nisn: "0079134009", nama: "AISAH NISWA PUTRI", kelas: "11 TKJ 2" },
+            { nisn: "0084675267", nama: "ALFIAN ANDHIKA PUTRA", kelas: "11 TKJ 2" },
+            { nisn: "0096647612", nama: "ALIF RIZKI WICAKSONO", kelas: "11 TKJ 2" },
+            { nisn: "0084428606", nama: "ANDHIKA NURUL HAIDAR", kelas: "11 TKJ 2" },
+            { nisn: "0089478651", nama: "ARDY ZAVIAN ARMADANI", kelas: "11 TKJ 2" },
+            { nisn: "0083487819", nama: "BAGAS ANDREAN PRATAMA", kelas: "11 TKJ 2" },
+            { nisn: "0089658355", nama: "BIMA RAKA PUTRA", kelas: "11 TKJ 2" },
+            { nisn: "0087681569", nama: "DHITA DWI AMANDA", kelas: "11 TKJ 2" },
+            { nisn: "0089155934", nama: "EKA ANGGUN PRATIWI", kelas: "11 TKJ 2" },
+            { nisn: "0086532686", nama: "FARIS AR RAIHAN", kelas: "11 TKJ 2" },
+            { nisn: "0081427339", nama: "GADIS AULIA SYAKIRA", kelas: "11 TKJ 2" },
+            { nisn: "0089376303", nama: "GIOVANI GERRALD NO", kelas: "11 TKJ 2" },
+            { nisn: "0095454168", nama: "HENVI ATMA WARDANI", kelas: "11 TKJ 2" },
+            { nisn: "0091941561", nama: "MAY DIANA", kelas: "11 TKJ 2" },
+            { nisn: "0087794706", nama: "MOCH. IVAN RAMDHANI", kelas: "11 TKJ 2" },
+            { nisn: "3097270155", nama: "MOH. FAJAR FATHUR ROHMAN", kelas: "11 TKJ 2" },
+            { nisn: "0088250586", nama: "MOHAMMAD JA'FAR A", kelas: "11 TKJ 2" },
+            { nisn: "0071378890", nama: "MUHAMMAD NASZRULLOH", kelas: "11 TKJ 2" },
+            { nisn: "0082076075", nama: "NABIL AHZA SYAWAL", kelas: "11 TKJ 2" },
+            { nisn: "0082001763", nama: "NOVAN RIZKY AMANULLAH", kelas: "11 TKJ 2" },
+            { nisn: "0083534767", nama: "NOVELITA CATUR CAHAYANI", kelas: "11 TKJ 2" },
+            { nisn: "0083480308", nama: "PUTU ARYA BAGUS MAWANDI", kelas: "11 TKJ 2" },
+            { nisn: "0089329424", nama: "QURROTUL AINY PUTRI BRILIANTO", kelas: "11 TKJ 2" },
+            { nisn: "0082731746", nama: "RAFLI BIMANTARA", kelas: "11 TKJ 2" },
+            { nisn: "0094544528", nama: "RAISYA NAYFATHUL MUCHTAR", kelas: "11 TKJ 2" },
+            { nisn: "0095281695", nama: "RIVALDI RAHMANDA PUTRA", kelas: "11 TKJ 2" },
+            { nisn: "0086814264", nama: "SHELA MADJID", kelas: "11 TKJ 2" },
+            { nisn: "0087283091", nama: "SULAIMAN ALFARIZI", kelas: "11 TKJ 2" },
+            { nisn: "0084988781", nama: "TSABITAH ZALFA AZMIDYA", kelas: "11 TKJ 2" },
+            { nisn: "0086555003", nama: "VALEN NOVALIANO BONHAM", kelas: "11 TKJ 2" },
+            { nisn: "0082027691", nama: "ZAHWA NAYLA SYAQIRA", kelas: "11 TKJ 2" },
+            { nisn: "0083584294", nama: "ADEN ISA ZARRAHAN", kelas: "11 TKJ 3" },
+            { nisn: "0085510766", nama: "Ahmad Abyan Athaillah", kelas: "11 TKJ 3" },
+            { nisn: "0082723095", nama: "AHMAD AKBAR", kelas: "11 TKJ 3" },
+            { nisn: "0096253872", nama: "ALFATHUR RIZKY HIDAYATULLAH", kelas: "11 TKJ 3" },
+            { nisn: "0084712149", nama: "Alfian Syahputra", kelas: "11 TKJ 3" },
+            { nisn: "0092695243", nama: "ARYA MAULANA SUSANTO", kelas: "11 TKJ 3" },
+            { nisn: "0073058510", nama: "BAYU SUCI RIZKY ILLAHI", kelas: "11 TKJ 3" },
+            { nisn: "0082839378", nama: "BIMO NUR RASYID", kelas: "11 TKJ 3" },
+            { nisn: "0054094704", nama: "BOBI AGUSTYO PRAYOGA", kelas: "11 TKJ 3" },
+            { nisn: "0085864850", nama: "DENIS PUTRA PRADITA", kelas: "11 TKJ 3" },
+            { nisn: "0088612750", nama: "DIANDHARU BAYU AJI", kelas: "11 TKJ 3" },
+            { nisn: "0087208958", nama: "DYON PUTRA PRAMANA", kelas: "11 TKJ 3" },
+            { nisn: "0081302597", nama: "Fauzan Nur Mochtar", kelas: "11 TKJ 3" },
+            { nisn: "0085597271", nama: "Hendrik Ardiansyah", kelas: "11 TKJ 3" },
+            { nisn: "0099679901", nama: "MA'RUF ABDUL HAFIDZ", kelas: "11 TKJ 3" },
+            { nisn: "0084891250", nama: "Mochamad Al Ridho", kelas: "11 TKJ 3" },
+            { nisn: "0099477123", nama: "MOCHAMMAD IQBAL MAULANA", kelas: "11 TKJ 3" },
+            { nisn: "0095611140", nama: "MUCHAMAD IBNU ROSYID", kelas: "11 TKJ 3" },
+            { nisn: "0097723052", nama: "MUHAMMAD ABYAN", kelas: "11 TKJ 3" },
+            { nisn: "0084601928", nama: "Muhammad Bismika 'Aisy", kelas: "11 TKJ 3" },
+            { nisn: "0088041683", nama: "MUHAMMAD MARKO NURHIDAYAH", kelas: "11 TKJ 3" },
+            { nisn: "0083557612", nama: "Musa Firdaus", kelas: "11 TKJ 3" },
+            { nisn: "0078368354", nama: "NOFAL", kelas: "11 TKJ 3" },
+            { nisn: "0084484691", nama: "Rahul Dhani Prasetya", kelas: "11 TKJ 3" },
+            { nisn: "0076889518", nama: "RAMADHAN", kelas: "11 TKJ 3" },
+            { nisn: "0087489645", nama: "RAYHAN ABI SAPUTRO", kelas: "11 TKJ 3" },
+            { nisn: "0095972181", nama: "RIDHO HABIBURROHMAN", kelas: "11 TKJ 3" },
+            { nisn: "0081522731", nama: "RIZKY RAMADHAN ARTHA WIJAYA", kelas: "11 TKJ 3" },
+            { nisn: "0082478447", nama: "RYU FERNANDITO", kelas: "11 TKJ 3" },
+            { nisn: "0077248526", nama: "RYU SEPTIANSYAH", kelas: "11 TKJ 3" },
+            { nisn: "0082400852", nama: "SATRIA ARUNA RAMADHAN", kelas: "11 TKJ 3" },
+            { nisn: "0083472648", nama: "SYAHRIL RAMADHANI", kelas: "11 TKJ 3" },
+            { nisn: "0093177898", nama: "WAHID ABDI RAMADHAN", kelas: "11 TKJ 3" },
+            { nisn: "0092610069", nama: "WAHYU PERMADI", kelas: "11 TKJ 3" },
+            { nisn: "0081551196", nama: "YUDI SETIAWAN MAULANA", kelas: "11 TKJ 3" },
+            { nisn: "0081065388", nama: "Agil Ade Firmansyah", kelas: "11 TKRO 3" },
+            { nisn: "0078407814", nama: "AHMAD HAMDAN ARIFIN", kelas: "11 TKRO 3" },
+            { nisn: "0089659164", nama: "Aman Dzakki Ali", kelas: "11 TKRO 3" },
+            { nisn: "0084481244", nama: "ARY BINTANG PRASETYA", kelas: "11 TKRO 3" },
+            { nisn: "0089291730", nama: "ARYA BODHI ADITTA PRATAMA", kelas: "11 TKRO 3" },
+            { nisn: "0091823714", nama: "BAGUS VALLEN SOENARTO", kelas: "11 TKRO 3" },
+            { nisn: "0089536917", nama: "DAVA GIO ALENDRA", kelas: "11 TKRO 3" },
+            { nisn: "0099283351", nama: "Denis Aditya Pamungkas", kelas: "11 TKRO 3" },
+            { nisn: "0096258142", nama: "DWIKA PRAMIRATYUDHA", kelas: "11 TKRO 3" },
+            { nisn: "0085983958", nama: "Fahril Anwar", kelas: "11 TKRO 3" },
+            { nisn: "0086905058", nama: "Fairus Alif", kelas: "11 TKRO 3" },
+            { nisn: "0083956295", nama: "HAIDARUL QOIS", kelas: "11 TKRO 3" },
+            { nisn: "0077563203", nama: "HASBI ASYYIDIQQI", kelas: "11 TKRO 3" },
+            { nisn: "0086623299", nama: "JIBRIEL ARIA PRADITA", kelas: "11 TKRO 3" },
+            { nisn: "0085464963", nama: "M AFGAN FITRA RAMADHAN", kelas: "11 TKRO 3" },
+            { nisn: "0085812238", nama: "MARCHEL YOSSI TANOTO", kelas: "11 TKRO 3" },
+            { nisn: "0089050930", nama: "MOCH. ARSHAVIN RAMADHANI", kelas: "11 TKRO 3" },
+            { nisn: "0095559810", nama: "MOCH. FATHUR ROZI", kelas: "11 TKRO 3" },
+            { nisn: "0084857063", nama: "MOH. AKBAR LUQMAN HAKIM", kelas: "11 TKRO 3" },
+            { nisn: "0081604500", nama: "MOHAMMAD CAHYO SAPUTRO", kelas: "11 TKRO 3" },
+            { nisn: "0083892259", nama: "MUHAMAD FAISAL AMIR YUNIOR", kelas: "11 TKRO 3" },
+            { nisn: "0084306199", nama: "MUHAMMAD ASRORI AKBAR", kelas: "11 TKRO 3" },
+            { nisn: "0093066405", nama: "MUHAMMAD ERFAN HASAN", kelas: "11 TKRO 3" },
+            { nisn: "0098775356", nama: "MUHAMMAD FADLY ARDIYANTO", kelas: "11 TKRO 3" },
+            { nisn: "3084519886", nama: "MUHAMMAD NUR SETO", kelas: "11 TKRO 3" },
+            { nisn: "3095077148", nama: "MUHAMMAD RIZKI MAULANA", kelas: "11 TKRO 3" },
+            { nisn: "0085111118", nama: "MUHAMMAD USULI", kelas: "11 TKRO 3" },
+            { nisn: "0098566877", nama: "NAZRIEL ADE RAJA", kelas: "11 TKRO 3" },
+            { nisn: "0081376185", nama: "RENO SETYAWAN JODI", kelas: "11 TKRO 3" },
+            { nisn: "3085199850", nama: "REYHAN ADYTYA PUTRA DEWANTO", kelas: "11 TKRO 3" },
+            { nisn: "0083058824", nama: "REYHAN RADITYA RAMADHANI", kelas: "11 TKRO 3" },
+            { nisn: "0094699908", nama: "SLAMET AKHMAD RIYADI", kelas: "11 TKRO 3" },
+            { nisn: "0089818379", nama: "WAHYU ALDIANSYAH", kelas: "11 TKRO 3" },
+            { nisn: "0082872262", nama: "ACHMAD IBRAHIM", kelas: "11 TKRO 4" },
+            { nisn: "0085357806", nama: "ACHMAD SHEVA ALFIANNO", kelas: "11 TKRO 4" },
+            { nisn: "0075402454", nama: "AHMAD FARHAN", kelas: "11 TKRO 4" },
+            { nisn: "0099584703", nama: "ALFINO ADITYA NUGROHO", kelas: "11 TKRO 4" },
+            { nisn: "0082518981", nama: "ANANDA ALFAREL LEONATA", kelas: "11 TKRO 4" },
+            { nisn: "0094057778", nama: "ANDIKA PUTRA PRATAMA", kelas: "11 TKRO 4" },
+            { nisn: "0084743178", nama: "ARDANISE SATRIA WARDANA", kelas: "11 TKRO 4" },
+            { nisn: "0083813071", nama: "ARYAN RIFQI ETZA EVALDO", kelas: "11 TKRO 4" },
+            { nisn: "0081834892", nama: "CHANDRA JULIAN SAPUTRA", kelas: "11 TKRO 4" },
+            { nisn: "0081407827", nama: "CHELSEA AL FAREZY", kelas: "11 TKRO 4" },
+            { nisn: "0083715884", nama: "CHIKAL NARA DANISWARA", kelas: "11 TKRO 4" },
+            { nisn: "0098752616", nama: "FAJAR SUBKHI FATWAN", kelas: "11 TKRO 4" },
+            { nisn: "0088285093", nama: "FARELINO SURYA PUTRA", kelas: "11 TKRO 4" },
+            { nisn: "0087901421", nama: "FARIDWAN ANINDRA", kelas: "11 TKRO 4" },
+            { nisn: "3082919887", nama: "FARIZ ANJAWARI", kelas: "11 TKRO 4" },
+            { nisn: "3098336144", nama: "FERDIANSYAH RIZKY PRASETYO DARMAWAN", kelas: "11 TKRO 4" },
+            { nisn: "0081814389", nama: "FIRNANDO ARUNG PUTRA PRATAMA", kelas: "11 TKRO 4" },
+            { nisn: "0093816980", nama: "GADING RAHMAD PRAKOSO", kelas: "11 TKRO 4" },
+            { nisn: "0074650027", nama: "IRWAN ARDIANSYAH ROJABI", kelas: "11 TKRO 4" },
+            { nisn: "0085086273", nama: "M. AZKA NAVIL NAZILY", kelas: "11 TKRO 4" },
+            { nisn: "3081776634", nama: "M. FAHRI FAIRUZ", kelas: "11 TKRO 4" },
+            { nisn: "0075205053", nama: "M. FIRDAN AL JAZAN", kelas: "11 TKRO 4" },
+            { nisn: "0083806227", nama: "MOCH. ARIEL MUSTOFA", kelas: "11 TKRO 4" },
+            { nisn: "0084640613", nama: "MOCH. RIZKI SYAHPUTRA", kelas: "11 TKRO 4" },
+            { nisn: "0086961657", nama: "MUHAMMAD DAFA RIZQILAH AKBAR", kelas: "11 TKRO 4" },
+            { nisn: "0093559790", nama: "MUHAMMAD DWI SANTOSO", kelas: "11 TKRO 4" },
+            { nisn: "0088808465", nama: "MUHAMMAD SATRIA PUTRA", kelas: "11 TKRO 4" },
+            { nisn: "0089095133", nama: "NIKO JELANG RAMADHAN ISNAEN PRATAMA", kelas: "11 TKRO 4" },
+            { nisn: "0084203974", nama: "RAMADHANI ZIKRI FIRMANSYAH", kelas: "11 TKRO 4" },
+            { nisn: "0073132165", nama: "RIDHO PUTRA HARNANDA", kelas: "11 TKRO 4" },
+            { nisn: "0085797941", nama: "RIO DE JENEIRO", kelas: "11 TKRO 4" },
+            { nisn: "0083820335", nama: "SAIFUL ADAM", kelas: "11 TKRO 4" },
+            { nisn: "0086505840", nama: "WISNU HAFIZH NUR RAHMAN", kelas: "11 TKRO 4" },
+            { nisn: "0082709119", nama: "ACHMAD HASYIM NAHDI NAJIBULLAH", kelas: "11 TPM 2" },
+            { nisn: "0088178490", nama: "ADITYA HARTONO", kelas: "11 TPM 2" },
+            { nisn: "0086898497", nama: "AHMAD IKLI FAUZAN", kelas: "11 TPM 2" },
+            { nisn: "0094811548", nama: "AJI NUR HIDAYAT", kelas: "11 TPM 2" },
+            { nisn: "0084418265", nama: "ALIF SAIFUDIN", kelas: "11 TPM 2" },
+            { nisn: "0088631894", nama: "Alvinzha Rahman Aryansyah", kelas: "11 TPM 2" },
+            { nisn: "0091339484", nama: "ANDIKA WAHYU PRATAMA", kelas: "11 TPM 2" },
+            { nisn: "3097497256", nama: "ANDRA PANJI SAPUTRA", kelas: "11 TPM 2" },
+            { nisn: "0079406837", nama: "ARI AKBAR", kelas: "11 TPM 2" },
+            { nisn: "0089755039", nama: "BAYU SAMUIS SUBUR", kelas: "11 TPM 2" },
+            { nisn: "0087897539", nama: "Daniel Ardiansyah", kelas: "11 TPM 2" },
+            { nisn: "0081867340", nama: "DENY ARIYANTO", kelas: "11 TPM 2" },
+            { nisn: "0084502614", nama: "DICKY APRIANSYAH", kelas: "11 TPM 2" },
+            { nisn: "0082269012", nama: "Ervan Ardiansyah Pratama", kelas: "11 TPM 2" },
+            { nisn: "0084007452", nama: "FAHRI AINUR ROHMAN", kelas: "11 TPM 2" },
+            { nisn: "0088195246", nama: "FAWWAZ FACHRUR ROZY", kelas: "11 TPM 2" },
+            { nisn: "0087608006", nama: "GEMMAEL DESHENDRA POERNOMO", kelas: "11 TPM 2" },
+            { nisn: "0094986929", nama: "IKHDAR HAIDAR ALI", kelas: "11 TPM 2" },
+            { nisn: "0089609958", nama: "M. AZZAM RIZKI", kelas: "11 TPM 2" },
+            { nisn: "0074890065", nama: "M. Fikri Asyrof", kelas: "11 TPM 2" },
+            { nisn: "0082793547", nama: "MARSELINO SUDIN", kelas: "11 TPM 2" },
+            { nisn: "0089010093", nama: "MOCH. TAUFIQ HIDAYAH", kelas: "11 TPM 2" },
+            { nisn: "0088921511", nama: "MOCHAMMAD NUHKY DWI ADITYA", kelas: "11 TPM 2" },
+            { nisn: "0089964408", nama: "Mochammad Risky", kelas: "11 TPM 2" },
+            { nisn: "0092588814", nama: "Moh. Taufik Hidayah", kelas: "11 TPM 2" },
+            { nisn: "0085040690", nama: "MUHAMMAD AFANDI", kelas: "11 TPM 2" },
+            { nisn: "0095266310", nama: "MUHAMMAD ALAIKA BIDZAKA ILLAH", kelas: "11 TPM 2" },
+            { nisn: "0083163447", nama: "MUHAMMAD KAAFIYYURRAHMAN YAQIN", kelas: "11 TPM 2" },
+            { nisn: "0082764556", nama: "NABIL MAULANA FIRMANSAH", kelas: "11 TPM 2" },
+            { nisn: "0089666981", nama: "REZA MISDIANTO", kelas: "11 TPM 2" },
+            { nisn: "0086084255", nama: "RHEYHAN MAULANA RISKY", kelas: "11 TPM 2" },
+            { nisn: "0099539387", nama: "RIFQY FAZEL RAZZANI", kelas: "11 TPM 2" },
+            { nisn: "0084964599", nama: "SYAIPUL ULUM", kelas: "11 TPM 2" },
+            { nisn: "0091755556", nama: "TRIAWAN FAJAR REVANO", kelas: "11 TPM 2" },
+            { nisn: "0093024694", nama: "WAHYU DWI SYAFARUDIN", kelas: "11 TPM 2" },
+            ];
+
+        const video = document.getElementById('video');
+        const photoPreview = document.getElementById('photoPreview');
+        const canvas = document.getElementById('canvas');
+        const shutter = document.getElementById('shutter');
+        const retakeBtn = document.getElementById('retakeBtn');
+        const submitBtn = document.getElementById('submitBtn');
+        const locationText = document.getElementById('locationText');
+        const loading = document.getElementById('loading');
+        const historyList = document.getElementById('historyList');
+
+        let currentStatus = "Masuk";
+        let capturedImage = null;
+        let coords = { lat: 0, lng: 0 };
+
+        function handleLogin() {
+            const inputNisn = document.getElementById('loginNisn').value;
+            const siswa = SISWA_DATABASE.find(s => s.nisn === inputNisn);
+
+            if (siswa) {
+                document.getElementById('nisn').value = siswa.nisn;
+                document.getElementById('nama').value = siswa.nama;
+                document.getElementById('kelas').value = siswa.kelas;
+                document.getElementById('loginPage').classList.add('hidden');
+                document.getElementById('mainPage').classList.remove('hidden');
+                startCamera();
+                getLocation();
+                loadHistory(siswa.nisn);
+            } else {
+                alert("NISN tidak ditemukan!");
+            }
+        }
+
+        function handleLogout() {
+            if(confirm("Apakah Anda ingin keluar?")) window.location.reload();
+        }
+
+        function setStatus(status) {
+            currentStatus = status;
+            const btnM = document.getElementById('btnMasuk');
+            const btnP = document.getElementById('btnPulang');
+            if(status === 'Masuk') {
+                btnM.className = "flex-1 py-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 bg-blue-600 text-white shadow-md transition-all";
+                btnP.className = "flex-1 py-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 text-gray-500 transition-all";
+            } else {
+                btnP.className = "flex-1 py-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 bg-blue-600 text-white shadow-md transition-all";
+                btnM.className = "flex-1 py-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 text-gray-500 transition-all";
+            }
+            validateForm();
+        }
+
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+                video.srcObject = stream;
+            } catch (e) {
+                alert("Izin kamera diperlukan.");
+            }
+        }
+
+        function takePhoto() {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0);
+            capturedImage = canvas.toDataURL('image/jpeg', 0.8);
+            photoPreview.src = capturedImage;
+            video.classList.add('hidden');
+            photoPreview.style.display = 'block';
+            shutter.classList.add('hidden');
+            retakeBtn.classList.remove('hidden');
+            validateForm();
+        }
+
+        function retakePhoto() {
+            capturedImage = null;
+            video.classList.remove('hidden');
+            photoPreview.style.display = 'none';
+            shutter.classList.remove('hidden');
+            retakeBtn.classList.add('hidden');
+            validateForm();
+        }
+
+        function getLocation() {
+            locationText.innerText = "Mendeteksi posisi...";
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (p) => {
+                        coords.lat = p.coords.latitude;
+                        coords.lng = p.coords.longitude;
+                        locationText.innerText = `Terdeteksi: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`;
+                        locationText.className = "text-xs text-blue-600 font-bold";
+                        validateForm();
+                    },
+                    (e) => { locationText.innerText = "Gagal memuat GPS."; }
+                );
+            }
+        }
+
+        function validateForm() {
+            const isReady = capturedImage && coords.lat !== 0;
+            if (isReady) {
+                submitBtn.disabled = false;
+                submitBtn.className = "w-full bg-blue-600 text-white py-4 rounded-2xl font-black text-sm tracking-widest flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all";
+            } else {
+                submitBtn.disabled = true;
+                submitBtn.className = "w-full bg-gray-200 text-gray-400 py-4 rounded-2xl font-black text-sm tracking-widest flex items-center justify-center gap-3 transition-all";
+            }
+        }
+
+        function loadHistory(nisn) {
+            const history = JSON.parse(localStorage.getItem('absensi_history_' + nisn) || '[]');
+            if (history.length > 0) {
+                // Menampilkan riwayat dengan detail tanggal dan jam
+                historyList.innerHTML = history.reverse().slice(0, 5).map(item => `
+                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 ${item.status === 'Masuk' ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'} rounded-full flex items-center justify-center text-xs">
+                                <i class="fa-solid ${item.status === 'Masuk' ? 'fa-sign-in' : 'fa-sign-out'}"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-gray-800">Absen ${item.status}</p>
+                                <div class="flex flex-col">
+                                    <span class="text-[9px] text-gray-500 font-medium"><i class="fa-regular fa-calendar-check mr-1"></i> ${item.date}</span>
+                                    <span class="text-[9px] text-blue-600 font-bold"><i class="fa-regular fa-clock mr-1"></i> ${item.time}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-[8px] font-mono text-gray-400 bg-white px-2 py-1 rounded-lg shadow-sm border border-gray-100">
+                            TERSIMPAN
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function saveToLocalHistory(data) {
+            const nisn = data.nisn;
+            const history = JSON.parse(localStorage.getItem('absensi_history_' + nisn) || '[]');
+            const now = new Date();
+            
+            // Format Jam (HH:mm WIB)
+            const timeStr = now.getHours().toString().padStart(2, '0') + ':' + 
+                            now.getMinutes().toString().padStart(2, '0') + ' WIB';
+            
+            // Format Tanggal (DD/MM/YYYY)
+            const dateStr = now.getDate().toString().padStart(2, '0') + '/' + 
+                            (now.getMonth() + 1).toString().padStart(2, '0') + '/' + 
+                            now.getFullYear();
+            
+            history.push({
+                status: data.status,
+                time: timeStr,
+                date: dateStr
+            });
+            
+            localStorage.setItem('absensi_history_' + nisn, JSON.stringify(history));
+        }
+
+        async function sendData() {
+            loading.style.display = "flex";
+            const data = {
+                nama: document.getElementById('nama').value,
+                nisn: document.getElementById('nisn').value,
+                kelas: document.getElementById('kelas').value,
+                status: currentStatus,
+                lat: coords.lat,
+                lng: coords.lng,
+                foto: capturedImage
+            };
+            try {
+                await fetch(WEB_APP_URL, { 
+                    method: 'POST', 
+                    mode: 'no-cors', 
+                    cache: 'no-cache',
+                    body: JSON.stringify(data) 
+                });
+                
+                saveToLocalHistory(data);
+                alert("Absensi " + currentStatus + " Berhasil!");
+                window.location.reload();
+            } catch (e) {
+                alert("Gagal terhubung ke Server.");
+            } finally {
+                loading.style.display = "none";
+            }
+        }
+    </script>
+</body>
+</html>
